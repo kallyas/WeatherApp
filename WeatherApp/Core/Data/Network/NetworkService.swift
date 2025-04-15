@@ -3,7 +3,7 @@ import Combine
 import CoreLocation
 
 class NetworkService {
-    private let apiKey = "YOUR_OPENWEATHER_API_KEY" // Replace with your OpenWeather API key
+    private let apiKey = "" // Replace with your OpenWeather API key
     private let baseURL = "https://api.openweathermap.org/data/3.0"
     
     func fetchWeather(latitude: Double, longitude: Double) -> AnyPublisher<WeatherResponse, Error> {
