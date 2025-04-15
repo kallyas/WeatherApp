@@ -38,13 +38,14 @@ struct ContentView: View {
                                 )
                             }
                         }
-                    } else if weatherViewModel.currentWeather != nil {
+                    } else if weatherViewModel.currentWeather == nil {
                         WeatherDashboardView(
                             viewModel: weatherViewModel,
                             isDarkMode: $isDarkMode
                         )
                     } else {
                         WelcomeView {
+                            print("Get Started button tapped")
                             locationManager.requestLocation()
                         }
                     }
@@ -78,6 +79,21 @@ struct ContentView: View {
                 }
             }
             .preferredColorScheme(isDarkMode ? .dark : .light)
+            .onAppear {
+                           // Request location access when the app first loads
+                           locationManager.requestLocation()
+                       }
+                       .alert(item: $locationManager.locationError) { error in
+                           Alert(
+                               title: Text("Location Access Required"),
+                               message: Text(error.description),
+                               primaryButton: .default(Text("Settings")) {
+                                   locationManager.openAppSettings()
+                               },
+                               secondaryButton: .cancel()
+                           )
+                       }
+                   
         }
         .onChange(of: locationManager.location) { newLocation in
             if let location = newLocation {
