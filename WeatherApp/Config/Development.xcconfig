@@ -1,0 +1,9 @@
+//
+//  Development.xcconfig
+//  WeatherApp
+//
+
+// Configuration settings file format documentation can be found at:
+// https://help.apple.com/xcode/#/dev745c5c974
+
+OPENWEATHER_API_KEY = YOUR_DEVELOPMENT_API_KEY
