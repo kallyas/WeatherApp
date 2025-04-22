@@ -28,14 +28,17 @@ class LocationService {
     }
     
     func requestLocation(completion: @escaping (Result<CLLocation, Error>) -> Void) {
-        // Set up a one-time observation for location change
-        let observer = NotificationCenter.default.addObserver(
+        // Declare a variable to hold the observer
+        var observerRef: Any?
+        
+        // Create the observer and assign it to the variable
+        observerRef = NotificationCenter.default.addObserver(
             forName: .locationUpdated,
             object: nil,
             queue: .main
         ) { [weak self] notification in
             // Remove the observer once we get a result
-            if let observer = observer as? NSObjectProtocol {
+            if let observer = observerRef as? NSObjectProtocol {
                 NotificationCenter.default.removeObserver(observer)
             }
             
