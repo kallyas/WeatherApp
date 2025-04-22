@@ -1,3 +1,11 @@
+//
+//  SavedLocationsView.swift
+//  WeatherApp
+//
+//  Created by Tumuhirwe Iden on 22/04/2025.
+//
+
+
 import SwiftUI
 import CoreLocation
 
