@@ -7,6 +7,7 @@ class SearchViewModel: ObservableObject {
     @Published var searchText = ""
     @Published var searchResults: [City] = []
     @Published var isSearching = false
+    @Published var errorMessage: String?
     
     private var cancellables = Set<AnyCancellable>()
     
@@ -29,9 +30,19 @@ class SearchViewModel: ObservableObject {
     
     func searchCity(query: String) {
         isSearching = true
-        searchCityUseCase.execute(query: query) { [weak self] cities in
-            self?.searchResults = cities
-            self?.isSearching = false
+        searchCityUseCase.execute(query: query) { [weak self] result in
+            DispatchQueue.main.async {
+                self?.isSearching = false
+                
+                switch result {
+                case .success(let cities):
+                    self?.searchResults = cities
+                    self?.errorMessage = nil
+                case .failure(let error):
+                    self?.searchResults = []
+                    self?.errorMessage = "Search error: \(error.localizedDescription)"
+                }
+            }
         }
     }
 }
