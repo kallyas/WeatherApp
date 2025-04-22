@@ -42,7 +42,7 @@ The app is built using modern iOS development practices:
 
 1. Clone the repository:
    ```
-   git clone https://github.com/username/WeatherApp.git
+   git clone https://github.com/kallyas/WeatherApp.git
    ```
 
 2. Open `WeatherApp.xcodeproj` in Xcode
