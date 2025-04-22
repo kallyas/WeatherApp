@@ -45,7 +45,7 @@ class WeatherResponseAdapter {
                 HourlyForecast(
                     dt: item.dt,
                     temp: item.main.temp,
-                    weather: item.weather
+                    weather: item.weather, pop: item?.pop
                 )
             }
             
@@ -64,6 +64,7 @@ class WeatherResponseAdapter {
                 let temps = dayItems.map { $0.main.temp }
                 let minTemp = temps.min() ?? 0
                 let maxTemp = temps.max() ?? 0
+                let sunrise = dayItems.first?.sys.sunrise ?? 0
                 
                 // Get most common weather condition for the day
                 let allWeatherConditions = dayItems.flatMap { $0.weather }
@@ -80,7 +81,7 @@ class WeatherResponseAdapter {
                         max: maxTemp
                     ),
                     weather: [mostCommonWeather],
-                    pop: pop
+                    pop: pop, sunrise: sunrise
                 )
             }
         }
