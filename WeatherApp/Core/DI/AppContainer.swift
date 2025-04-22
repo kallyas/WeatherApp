@@ -1,25 +1,67 @@
 import Foundation
+import CoreLocation
+import Combine // Add this import for ObservableObject
 
-class AppContainer {
-    // Use the app configuration instead of hardcoded values
-    private let apiKey = AppConfiguration.apiKey
+// Dependency Injection Container following the Service Locator pattern
+class AppContainer: ObservableObject {
+    // Core Services
+    private(set) lazy var networkMonitor = NetworkMonitorService()
+    private(set) lazy var analyticsService = AnalyticsService()
+    private(set) lazy var locationService = LocationService()
     
-    // Services
-    lazy var weatherAPIService: WeatherAPIServiceProtocol = {
-        return WeatherAPIService(apiKey: apiKey)
+    // API Services
+    private(set) lazy var weatherAPIService: WeatherAPIServiceProtocol = {
+        return WeatherAPIService(apiKey: AppConfiguration.apiKey)
     }()
     
-    // Repositories
-    lazy var weatherRepository: WeatherRepositoryProtocol = {
-        return WeatherRepository(weatherAPIService: weatherAPIService)
+    // Caching
+    private(set) lazy var weatherCacheService: WeatherCacheServiceProtocol = {
+        return WeatherCacheService(cacheDuration: AppConfiguration.cacheDuration)
     }()
     
-    // Use Cases
-    lazy var fetchWeatherUseCase: FetchWeatherUseCaseProtocol = {
+    // MARK: - Repositories
+    
+    private(set) lazy var weatherRepository: WeatherRepositoryProtocol = {
+        return WeatherRepository(
+            weatherAPIService: weatherAPIService,
+            cacheService: weatherCacheService,
+            networkMonitor: networkMonitor
+        )
+    }()
+    
+    // MARK: - Use Cases
+    
+    private(set) lazy var fetchWeatherUseCase: FetchWeatherUseCaseProtocol = {
         return FetchWeatherUseCase(weatherRepository: weatherRepository)
     }()
     
-    lazy var searchCityUseCase: SearchCityUseCaseProtocol = {
+    private(set) lazy var searchCityUseCase: SearchCityUseCaseProtocol = {
         return SearchCityUseCase(weatherRepository: weatherRepository)
     }()
+    
+    private(set) lazy var manageLocationsUseCase: ManageLocationsUseCaseProtocol = {
+        return ManageLocationsUseCase()
+    }()
+    
+    // MARK: - View Models
+    
+    func makeWeatherViewModel() -> WeatherViewModel {
+        return WeatherViewModel(
+            fetchWeatherUseCase: fetchWeatherUseCase,
+            searchCityUseCase: searchCityUseCase,
+            manageLocationsUseCase: manageLocationsUseCase,
+            locationService: locationService
+        )
+    }
+    
+    // MARK: - Lifecycle
+    
+    init() {
+        AppConfiguration.logAPIStatus()
+        networkMonitor.startMonitoring()
+    }
+    
+    deinit {
+        networkMonitor.stopMonitoring()
+    }
 }
