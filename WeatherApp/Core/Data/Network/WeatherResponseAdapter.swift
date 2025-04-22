@@ -1,19 +1,8 @@
-//
-//  WeatherResponseAdapter.swift
-//  WeatherApp
-//
-//  Created by Tumuhirwe Iden on 22/04/2025.
-//
-
-
 import Foundation
 import Combine
 
-// This adapter converts the response from current weather API (2.5) format 
-// to match the structure expected by our app (which was designed for API 3.0)
 class WeatherResponseAdapter {
     
-    // Convert from OpenWeather API 2.5 current weather response to our app's model
     static func adaptCurrentWeatherResponse(_ currentWeatherData: Data, _ forecastData: Data? = nil) throws -> WeatherResponse {
         let decoder = JSONDecoder()
         
@@ -45,7 +34,8 @@ class WeatherResponseAdapter {
                 HourlyForecast(
                     dt: item.dt,
                     temp: item.main.temp,
-                    weather: item.weather, pop: item?.pop
+                    weather: item.weather,
+                    pop: item.pop
                 )
             }
             
@@ -64,7 +54,8 @@ class WeatherResponseAdapter {
                 let temps = dayItems.map { $0.main.temp }
                 let minTemp = temps.min() ?? 0
                 let maxTemp = temps.max() ?? 0
-                let sunrise = dayItems.first?.sys.sunrise ?? 0
+                let sunrise = dayItems.first?.sys?.sunrise ?? 0
+                let sunset = dayItems.first?.sys?.sunset ?? 0
                 
                 // Get most common weather condition for the day
                 let allWeatherConditions = dayItems.flatMap { $0.weather }
@@ -81,7 +72,9 @@ class WeatherResponseAdapter {
                         max: maxTemp
                     ),
                     weather: [mostCommonWeather],
-                    pop: pop, sunrise: sunrise
+                    pop: pop,
+                    sunrise: sunrise,
+                    sunset: sunset
                 )
             }
         }
@@ -104,6 +97,7 @@ struct OpenWeatherCurrentResponse: Codable {
     let wind: Wind
     let dt: Int
     let name: String
+    let sys: System?
     
     struct MainWeather: Codable {
         let temp: Double
@@ -118,6 +112,11 @@ struct OpenWeatherCurrentResponse: Codable {
         let speed: Double
         let deg: Int
     }
+    
+    struct System: Codable {
+        let sunrise: Int?
+        let sunset: Int?
+    }
 }
 
 struct OpenWeatherForecastResponse: Codable {
@@ -129,6 +128,7 @@ struct OpenWeatherForecastResponse: Codable {
         let main: MainWeather
         let weather: [WeatherCondition]
         let pop: Double?
+        let sys: System?
         
         struct MainWeather: Codable {
             let temp: Double
@@ -138,10 +138,17 @@ struct OpenWeatherForecastResponse: Codable {
             let temp_min: Double
             let temp_max: Double
         }
+        
+        struct System: Codable {
+            let sunrise: Int?
+            let sunset: Int?
+        }
     }
     
     struct City: Codable {
         let name: String
         let country: String
+        let sunrise: Int?
+        let sunset: Int?
     }
 }
