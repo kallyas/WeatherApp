@@ -4,6 +4,7 @@ struct HourlyForecast: Codable, Identifiable {
     let dt: Int
     let temp: Double
     let weather: [WeatherCondition]
+    let pop: Double
     
     var id: Int { dt }
     
