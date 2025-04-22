@@ -7,6 +7,8 @@ class WeatherViewModel: ObservableObject {
     // Dependencies
     private let fetchWeatherUseCase: FetchWeatherUseCaseProtocol
     private let searchCityUseCase: SearchCityUseCaseProtocol
+    private let manageLocationsUseCase: ManageLocationsUseCaseProtocol
+    private let locationService: LocationService
     
     // Published properties
     @Published var currentWeather: CurrentWeather?
@@ -18,12 +20,24 @@ class WeatherViewModel: ObservableObject {
     @Published var selectedCity: City?
     @Published var searchResults: [City] = []
     @Published var searchText = ""
+    @Published var lastUpdated: Date?
+    @Published var isRefreshing = false
+    
+    // Refresh timer
+    private var refreshTimer: Timer?
+    private var refreshInterval: TimeInterval = 30 * 60 // Default 30 minutes
     
     private var cancellables = Set<AnyCancellable>()
     
-    init(fetchWeatherUseCase: FetchWeatherUseCaseProtocol, searchCityUseCase: SearchCityUseCaseProtocol) {
+    init(fetchWeatherUseCase: FetchWeatherUseCaseProtocol,
+         searchCityUseCase: SearchCityUseCaseProtocol,
+         manageLocationsUseCase: ManageLocationsUseCaseProtocol,
+         locationService: LocationService) {
+        
         self.fetchWeatherUseCase = fetchWeatherUseCase
         self.searchCityUseCase = searchCityUseCase
+        self.manageLocationsUseCase = manageLocationsUseCase
+        self.locationService = locationService
         
         // Setup search debounce
         $searchText
@@ -37,10 +51,36 @@ class WeatherViewModel: ObservableObject {
                 self.searchCity(query: searchTerm)
             }
             .store(in: &cancellables)
+        
+        // Setup refresh timer observer
+        NotificationCenter.default.publisher(for: UserDefaults.didChangeNotification)
+            .sink { [weak self] _ in
+                self?.updateRefreshInterval()
+            }
+            .store(in: &cancellables)
+        
+        // Initial setup of refresh timer
+        updateRefreshInterval()
     }
+    
+    deinit {
+        stopRefreshTimer()
+    }
+    
+    // MARK: - Public Methods
     
     func fetchWeather(for city: City) {
         selectedCity = city
+        
+        // Save to recent locations
+        let savedLocation = SavedLocation(
+            id: UUID().uuidString,
+            name: city.name,
+            country: city.country,
+            latitude: city.coordinates.latitude,
+            longitude: city.coordinates.longitude
+        )
+        manageLocationsUseCase.addToRecentLocations(savedLocation)
         
         // Save to UserDefaults for persistent storage
         UserDefaults.standard.saveLastViewedCity(
@@ -60,47 +100,97 @@ class WeatherViewModel: ObservableObject {
         print("Fetching weather for lat: \(latitude), lon: \(longitude)")
         
         fetchWeatherUseCase.execute(latitude: latitude, longitude: longitude)
+            .receive(on: DispatchQueue.main)
             .sink(receiveCompletion: { [weak self] completion in
-                DispatchQueue.main.async {
-                    self?.isLoading = false
-                    if case .failure(let error) = completion {
+                self?.isLoading = false
+                self?.isRefreshing = false
+                
+                if case .failure(let error) = completion {
+                    if let networkError = error as? NetworkError, networkError == NetworkError.noConnection {
+                        self?.errorMessage = "No internet connection. Showing cached data if available."
+                    } else {
                         self?.errorMessage = "Could not load weather data: \(error.localizedDescription)"
-                        print("Weather fetch error: \(error)")
                     }
+                    print("Weather fetch error: \(error)")
                 }
             }, receiveValue: { [weak self] response in
-                DispatchQueue.main.async {
-                    self?.currentWeather = response.current
-                    self?.hourlyForecast = Array(response.hourly.prefix(24))
-                    self?.dailyForecast = response.daily
-                    self?.timezone = response.timezone
-                    
-                    // If we got weather data but don't have a selected city (came from location),
-                    // create a "Current Location" city
-                    if self?.selectedCity == nil {
-                        self?.selectedCity = City(
-                            name: "Current Location",
-                            country: "",
-                            coordinates: CLLocationCoordinate2D(latitude: latitude, longitude: longitude)
-                        )
-                    }
-                    
-                    print("Successfully loaded weather data")
+                self?.currentWeather = response.current
+                self?.hourlyForecast = Array(response.hourly.prefix(48))
+                self?.dailyForecast = response.daily
+                self?.timezone = response.timezone
+                self?.lastUpdated = Date()
+                
+                // If we got weather data but don't have a selected city (came from location),
+                // create a "Current Location" city
+                if self?.selectedCity == nil {
+                    self?.selectedCity = City(
+                        name: "Current Location",
+                        country: "",
+                        coordinates: CLLocationCoordinate2D(latitude: latitude, longitude: longitude)
+                    )
                 }
+                
+                print("Successfully loaded weather data")
             })
             .store(in: &cancellables)
+    }
+    
+    func refreshWeatherData() {
+        isRefreshing = true
+        
+        if let city = selectedCity {
+            fetchWeather(
+                latitude: city.coordinates.latitude,
+                longitude: city.coordinates.longitude
+            )
+        } else {
+            locationService.requestLocation { [weak self] result in
+                switch result {
+                case .success(let location):
+                    self?.fetchWeather(
+                        latitude: location.coordinate.latitude,
+                        longitude: location.coordinate.longitude
+                    )
+                case .failure(let error):
+                    self?.isRefreshing = false
+                    self?.errorMessage = "Could not update location: \(error.localizedDescription)"
+                }
+            }
+        }
     }
     
     func searchCity(query: String) {
         print("Searching for city: \(query)")
         
-        searchCityUseCase.execute(query: query) { [weak self] cities in
+        searchCityUseCase.execute(query: query) { [weak self] result in
             DispatchQueue.main.async {
-                self?.searchResults = cities
-                print("Found \(cities.count) cities for query: \(query)")
+                switch result {
+                case .success(let cities):
+                    self?.searchResults = cities
+                    print("Found \(cities.count) cities for query: \(query)")
+                case .failure(let error):
+                    self?.searchResults = []
+                    print("Error searching cities: \(error.localizedDescription)")
+                }
             }
         }
     }
+    
+    func fetchCurrentLocationWeather() {
+        locationService.requestLocation { [weak self] result in
+            switch result {
+            case .success(let location):
+                self?.fetchWeather(
+                    latitude: location.coordinate.latitude,
+                    longitude: location.coordinate.longitude
+                )
+            case .failure(let error):
+                self?.errorMessage = "Could not get location: \(error.localizedDescription)"
+            }
+        }
+    }
+    
+    // MARK: - Helper Methods
     
     func getWeatherIcon(from icon: String) -> String {
         switch icon {
@@ -131,5 +221,27 @@ class WeatherViewModel: ObservableObject {
         case "50": return .foggy
         default: return .clear
         }
+    }
+    
+    // MARK: - Private Methods
+    
+    private func updateRefreshInterval() {
+        let minutes = UserDefaults.standard.integer(forKey: "refreshFrequency")
+        refreshInterval = TimeInterval(minutes * 60)
+        
+        // Restart timer with new interval
+        stopRefreshTimer()
+        startRefreshTimer()
+    }
+    
+    private func startRefreshTimer() {
+        refreshTimer = Timer.scheduledTimer(withTimeInterval: refreshInterval, repeats: true) { [weak self] _ in
+            self?.refreshWeatherData()
+        }
+    }
+    
+    private func stopRefreshTimer() {
+        refreshTimer?.invalidate()
+        refreshTimer = nil
     }
 }
