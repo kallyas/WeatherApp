@@ -1,14 +1,43 @@
 import Foundation
 
 enum APIEndpoints {
-    static let baseURL = "https://api.openweathermap.org/data/3.0"
-    static let geoURL = "https://api.openweathermap.org/geo/1.0"
+    static let baseURL = AppConfiguration.baseURL
+    static let geoURL = AppConfiguration.geoURL
     
     static func weatherURL(latitude: Double, longitude: Double, apiKey: String) -> URL? {
-        return URL(string: "\(baseURL)/onecall?lat=\(latitude)&lon=\(longitude)&units=metric&appid=\(apiKey)")
+        // Updated to use the proper endpoint from the documentation
+        var components = URLComponents(string: "\(baseURL)/weather")
+        components?.queryItems = [
+            URLQueryItem(name: "lat", value: String(latitude)),
+            URLQueryItem(name: "lon", value: String(longitude)),
+            URLQueryItem(name: "units", value: AppConfiguration.defaultTempUnit),
+            URLQueryItem(name: "appid", value: apiKey)
+        ]
+        
+        return components?.url
+    }
+    
+    static func forecastURL(latitude: Double, longitude: Double, apiKey: String) -> URL? {
+        // Added the 5-day forecast endpoint
+        var components = URLComponents(string: "\(baseURL)/forecast")
+        components?.queryItems = [
+            URLQueryItem(name: "lat", value: String(latitude)),
+            URLQueryItem(name: "lon", value: String(longitude)),
+            URLQueryItem(name: "units", value: AppConfiguration.defaultTempUnit),
+            URLQueryItem(name: "appid", value: apiKey)
+        ]
+        
+        return components?.url
     }
     
     static func citySearchURL(query: String, apiKey: String) -> URL? {
-        return URL(string: "\(geoURL)/direct?q=\(query)&limit=5&appid=\(apiKey)")
+        var components = URLComponents(string: "\(geoURL)/direct")
+        components?.queryItems = [
+            URLQueryItem(name: "q", value: query),
+            URLQueryItem(name: "limit", value: "5"),
+            URLQueryItem(name: "appid", value: apiKey)
+        ]
+        
+        return components?.url
     }
 }
