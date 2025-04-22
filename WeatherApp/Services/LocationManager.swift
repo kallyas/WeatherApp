@@ -11,11 +11,16 @@ class LocationManager: NSObject, ObservableObject {
     @Published var authorizationStatus: CLAuthorizationStatus = .notDetermined
     @Published var hasRequestedAuthorization = false
     
+    // Timer for automatic location updates
+    private var locationUpdateTimer: Timer?
+    private let updateInterval: TimeInterval = 10 * 60 // 10 minutes
+    
     enum LocationError: Error, Identifiable {
         case denied
         case restricted
         case unknown(Error)
         case locationUnknown
+        case timeout
         
         var id: String {
             switch self {
@@ -23,6 +28,7 @@ class LocationManager: NSObject, ObservableObject {
             case .restricted: return "restricted"
             case .unknown: return "unknown"
             case .locationUnknown: return "locationUnknown"
+            case .timeout: return "timeout"
             }
         }
         
@@ -35,7 +41,9 @@ class LocationManager: NSObject, ObservableObject {
             case .unknown(let error):
                 return "Location error: \(error.localizedDescription)"
             case .locationUnknown:
-                return "Unable to determine location. Please try again."
+                return "Unable to determine location. Please check your internet connection and try again."
+            case .timeout:
+                return "Location request timed out. Please try again."
             }
         }
     }
@@ -50,6 +58,10 @@ class LocationManager: NSObject, ObservableObject {
         print("Initial location authorization status: \(manager.authorizationStatus.rawValue)")
     }
     
+    deinit {
+        stopLocationUpdates()
+    }
+    
     func requestLocation() {
         // Only proceed if we haven't already requested authorization
         // This prevents the loop of repeatedly requesting permission
@@ -62,6 +74,17 @@ class LocationManager: NSObject, ObservableObject {
         locationError = nil
         
         print("Requesting location - current authorization: \(manager.authorizationStatus.rawValue)")
+        
+        // Set a timeout for location request
+        let timeoutTimer = Timer.scheduledTimer(withTimeInterval: 15, repeats: false) { [weak self] _ in
+            guard let self = self else { return }
+            
+            if self.isLoading {
+                self.isLoading = false
+                self.locationError = .timeout
+                print("Location request timed out")
+            }
+        }
         
         switch manager.authorizationStatus {
         case .notDetermined:
@@ -79,20 +102,41 @@ class LocationManager: NSObject, ObservableObject {
             // User denied access
             isLoading = false
             locationError = .denied
+            timeoutTimer.invalidate()
             print("Location access denied by user")
             
         case .restricted:
             // User cannot change this authorization status
             isLoading = false
             locationError = .restricted
+            timeoutTimer.invalidate()
             print("Location access restricted")
             
         @unknown default:
             isLoading = false
             let error = NSError(domain: "Unknown authorization status", code: 0)
             locationError = .unknown(error)
+            timeoutTimer.invalidate()
             print("Unknown location authorization status")
         }
+    }
+    
+    func startPeriodicLocationUpdates() {
+        stopLocationUpdates() // Stop any existing timer
+        
+        // Start a new timer to update location periodically
+        locationUpdateTimer = Timer.scheduledTimer(withTimeInterval: updateInterval, repeats: true) { [weak self] _ in
+            if self?.manager.authorizationStatus == .authorizedWhenInUse ||
+               self?.manager.authorizationStatus == .authorizedAlways {
+                print("Requesting periodic location update")
+                self?.manager.requestLocation()
+            }
+        }
+    }
+    
+    func stopLocationUpdates() {
+        locationUpdateTimer?.invalidate()
+        locationUpdateTimer = nil
     }
     
     func openAppSettings() {
@@ -137,6 +181,9 @@ extension LocationManager: CLLocationManagerDelegate {
         
         self.location = location
         print("Location obtained successfully: \(coordinates.latitude), \(coordinates.longitude)")
+        
+        // Post notification that location was updated
+        NotificationCenter.default.post(name: .locationUpdated, object: nil)
     }
     
     func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
@@ -160,6 +207,9 @@ extension LocationManager: CLLocationManagerDelegate {
         } else {
             locationError = .unknown(error)
         }
+        
+        // Post notification that location update failed
+        NotificationCenter.default.post(name: .locationUpdated, object: error)
     }
     
     func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
