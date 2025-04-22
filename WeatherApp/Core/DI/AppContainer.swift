@@ -1,8 +1,8 @@
 import Foundation
 
 class AppContainer {
-    // API Key - Replace with your actual API key
-    private let apiKey = "YOUR_OPENWEATHER_API_KEY"
+    // Use the app configuration instead of hardcoded values
+    private let apiKey = AppConfiguration.apiKey
     
     // Services
     lazy var weatherAPIService: WeatherAPIServiceProtocol = {
