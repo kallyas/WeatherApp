@@ -84,42 +84,34 @@ struct RootView: View {
     
     var body: some View {
         TabView(selection: $selectedTab) {
-            // Weather tab
-            NavigationView {
-                ContentView(
-                    weatherViewModel: appContainer.makeWeatherViewModel()
-                )
-            }
+            // Weather tab - Remove NavigationView wrapper
+            ContentView(
+                weatherViewModel: appContainer.makeWeatherViewModel()
+            )
             .tabItem {
                 Label("Weather", systemImage: "cloud.sun.fill")
             }
             .tag(0)
             
-            // Radar tab
-            NavigationView {
-                WeatherMapView()
-            }
+            // Radar tab - Remove NavigationView wrapper
+            WeatherMapView()
             .tabItem {
                 Label("Map", systemImage: "map.fill")
             }
             .tag(1)
             
-            // Cities tab
-            NavigationView {
-                SavedLocationsView(
-                    locationsUseCase: appContainer.manageLocationsUseCase,
-                    weatherViewModel: appContainer.makeWeatherViewModel()
-                )
-            }
+            // Cities tab - Remove NavigationView wrapper
+            SavedLocationsView(
+                locationsUseCase: appContainer.manageLocationsUseCase,
+                weatherViewModel: appContainer.makeWeatherViewModel()
+            )
             .tabItem {
                 Label("Cities", systemImage: "list.bullet")
             }
             .tag(2)
             
-            // Settings tab
-            NavigationView {
-                SettingsView()
-            }
+            // Settings tab - Remove NavigationView wrapper
+            SettingsView()
             .tabItem {
                 Label("Settings", systemImage: "gearshape.fill")
             }
@@ -127,220 +119,5 @@ struct RootView: View {
         }
         .accentColor(themeManager.accentColor)
         .preferredColorScheme(themeManager.selectedTheme.colorScheme)
-    }
-}
-
-struct WeatherMapView: View {
-    @State private var showingMapOptions = false
-    
-    var body: some View {
-        ZStack {
-            // Replace this with a MapKit integration in a real app
-            Color(.systemGroupedBackground)
-                .overlay(
-                    VStack {
-                        Image(systemName: "map.fill")
-                            .resizable()
-                            .aspectRatio(contentMode: .fit)
-                            .frame(width: 100, height: 100)
-                            .foregroundColor(.gray)
-                            .opacity(0.5)
-                        
-                        Text("Weather Map")
-                            .font(.title)
-                            .fontWeight(.bold)
-                            .padding(.top)
-                        
-                        Text("Weather radar would be displayed here")
-                            .foregroundColor(.secondary)
-                    }
-                )
-            
-            // Map options button
-            VStack {
-                Spacer()
-                
-                HStack {
-                    Spacer()
-                    
-                    Button(action: {
-                        showingMapOptions = true
-                    }) {
-                        Image(systemName: "slider.horizontal.3")
-                            .font(.system(size: 20, weight: .bold))
-                            .padding()
-                            .background(Circle().fill(Color(.systemBackground)))
-                            .shadow(radius: 5)
-                    }
-                    .padding()
-                }
-            }
-        }
-        .navigationTitle("Weather Map")
-        .actionSheet(isPresented: $showingMapOptions) {
-            ActionSheet(
-                title: Text("Map Options"),
-                buttons: [
-                    .default(Text("Temperature")) { },
-                    .default(Text("Precipitation")) { },
-                    .default(Text("Wind")) { },
-                    .default(Text("Clouds")) { },
-                    .default(Text("Pressure")) { },
-                    .cancel()
-                ]
-            )
-        }
-    }
-}
-
-struct SavedLocationsView: View {
-    @EnvironmentObject private var themeManager: ThemeManager
-    let locationsUseCase: ManageLocationsUseCaseProtocol
-    let weatherViewModel: WeatherViewModel
-    
-    @State private var showingAddSheet = false
-    @State private var recentLocations: [SavedLocation] = []
-    @State private var favoriteLocations: [SavedLocation] = []
-    
-    var body: some View {
-        List {
-            // Favorite locations section
-            Section(header: Text("Favorites")) {
-                if favoriteLocations.isEmpty {
-                    HStack {
-                        Text("No favorite locations")
-                            .foregroundColor(.secondary)
-                            .italic()
-                        Spacer()
-                    }
-                } else {
-                    ForEach(favoriteLocations, id: \.id) { location in
-                        Button(action: {
-                            selectLocation(location)
-                        }) {
-                            HStack {
-                                VStack(alignment: .leading) {
-                                    Text(location.name)
-                                        .font(.headline)
-                                    Text(location.country)
-                                        .font(.subheadline)
-                                        .foregroundColor(.gray)
-                                }
-                                
-                                Spacer()
-                                
-                                Image(systemName: "chevron.right")
-                                    .foregroundColor(.gray)
-                            }
-                        }
-                    }
-                    .onDelete { indexSet in
-                        deleteFavorite(at: indexSet)
-                    }
-                }
-            }
-            
-            // Recent locations section
-            Section(header: Text("Recent")) {
-                if recentLocations.isEmpty {
-                    HStack {
-                        Text("No recent locations")
-                            .foregroundColor(.secondary)
-                            .italic()
-                        Spacer()
-                    }
-                } else {
-                    ForEach(recentLocations, id: \.id) { location in
-                        Button(action: {
-                            selectLocation(location)
-                        }) {
-                            HStack {
-                                VStack(alignment: .leading) {
-                                    Text(location.name)
-                                        .font(.headline)
-                                    Text(location.country)
-                                        .font(.subheadline)
-                                        .foregroundColor(.gray)
-                                }
-                                
-                                Spacer()
-                                
-                                Button(action: {
-                                    toggleFavorite(location)
-                                }) {
-                                    Image(systemName: isFavorite(location) ? "star.fill" : "star")
-                                        .foregroundColor(themeManager.accentColor)
-                                }
-                                .buttonStyle(BorderlessButtonStyle())
-                            }
-                        }
-                    }
-                }
-                
-                if !recentLocations.isEmpty {
-                    Button(action: {
-                        locationsUseCase.clearRecentLocations()
-                        loadLocations()
-                    }) {
-                        Text("Clear Recent")
-                            .foregroundColor(.red)
-                    }
-                }
-            }
-        }
-        .navigationTitle("Saved Locations")
-        .toolbar {
-            ToolbarItem(placement: .navigationBarTrailing) {
-                Button(action: {
-                    showingAddSheet = true
-                }) {
-                    Image(systemName: "plus")
-                }
-            }
-        }
-        .sheet(isPresented: $showingAddSheet) {
-            SearchView(weatherViewModel: weatherViewModel)
-        }
-        .onAppear {
-            loadLocations()
-        }
-    }
-    
-    private func loadLocations() {
-        favoriteLocations = locationsUseCase.getFavoriteLocations()
-        recentLocations = locationsUseCase.getRecentLocations()
-    }
-    
-    private func selectLocation(_ location: SavedLocation) {
-        let city = City(
-            name: location.name,
-            country: location.country,
-            coordinates: CLLocationCoordinate2D(
-                latitude: location.latitude,
-                longitude: location.longitude
-            )
-        )
-        weatherViewModel.fetchWeather(for: city)
-    }
-    
-    private func isFavorite(_ location: SavedLocation) -> Bool {
-        return favoriteLocations.contains(where: { $0.id == location.id })
-    }
-    
-    private func toggleFavorite(_ location: SavedLocation) {
-        if isFavorite(location) {
-            locationsUseCase.removeFromFavorites(location.id)
-        } else {
-            locationsUseCase.addToFavorites(location)
-        }
-        loadLocations()
-    }
-    
-    private func deleteFavorite(at indexSet: IndexSet) {
-        indexSet.forEach { index in
-            let location = favoriteLocations[index]
-            locationsUseCase.removeFromFavorites(location.id)
-        }
-        loadLocations()
     }
 }
