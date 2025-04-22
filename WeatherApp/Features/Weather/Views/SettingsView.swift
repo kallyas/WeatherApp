@@ -1,3 +1,11 @@
+//
+//  SettingsView.swift
+//  WeatherApp
+//
+//  Created by Tumuhirwe Iden on 22/04/2025.
+//
+
+
 import SwiftUI
 
 struct SettingsView: View {
@@ -230,4 +238,102 @@ struct PrivacyPolicyView: View {
                     Text("2. How We Use Your Information")
                         .font(.headline)
                     
-                    Text("Your location data is only used to provide you with relevant weather information. We do not share this data with third parties except to the extent necessary to provide the weather service (i.e., making API calls to
+                    Text("Your location data is only used to provide you with relevant weather information. We do not share this data with third parties except to the extent necessary to provide the weather service (i.e., making API calls to weather data providers).")
+                                        
+                                        Text("3. Data Storage")
+                                            .font(.headline)
+                                        
+                                        Text("We store your preferences (such as your preferred units and theme) locally on your device. Your last searched locations are also stored locally to improve your experience.")
+                                        
+                                        Text("4. Permissions")
+                                            .font(.headline)
+                                        
+                                        Text("The app requires the following permissions:")
+                                            .padding(.bottom, 5)
+                                        
+                                        Text("• Location access: To provide weather data for your current location")
+                                        Text("• Notification access: To send you weather alerts (optional)")
+                                        
+                                        Text("5. Contact Us")
+                                            .font(.headline)
+                                        
+                                        Text("If you have any questions about this Privacy Policy, please contact us at support@weatherapp.com")
+                                    }
+                                }
+                                .padding()
+                            }
+                            .navigationTitle("Privacy Policy")
+                            .navigationBarTitleDisplayMode(.inline)
+                        }
+                    }
+
+                    struct ColorPickerView: View {
+                        @Binding var selectedColor: Color
+                        let onColorSelected: (Color) -> Void
+                        
+                        let colors: [Color] = [
+                            .blue, .indigo, .purple, .pink, .red, .orange, .yellow, .green, .mint, .teal
+                        ]
+                        
+                        @State private var customColor: Color = .blue
+                        
+                        var body: some View {
+                            NavigationView {
+                                VStack(spacing: 20) {
+                                    // Color preview
+                                    RoundedRectangle(cornerRadius: 12)
+                                        .fill(selectedColor)
+                                        .frame(height: 100)
+                                        .shadow(color: selectedColor.opacity(0.5), radius: 10)
+                                        .padding()
+                                    
+                                    // Preset colors
+                                    LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 5), spacing: 15) {
+                                        ForEach(colors, id: \.self) { color in
+                                            Circle()
+                                                .fill(color)
+                                                .frame(width: 50, height: 50)
+                                                .overlay(
+                                                    Circle()
+                                                        .stroke(Color.primary.opacity(0.2), lineWidth: 1)
+                                                )
+                                                .overlay(
+                                                    Circle()
+                                                        .stroke(Color.white, lineWidth: selectedColor == color ? 2 : 0)
+                                                        .padding(2)
+                                                )
+                                                .shadow(color: color.opacity(0.5), radius: 5)
+                                                .onTapGesture {
+                                                    selectedColor = color
+                                                }
+                                        }
+                                    }
+                                    .padding()
+                                    
+                                    // Custom color picker
+                                    ColorPicker("Custom Color", selection: $customColor)
+                                        .padding()
+                                        .onChange(of: customColor) { newValue in
+                                            selectedColor = newValue
+                                        }
+                                    
+                                    Spacer()
+                                }
+                                .navigationTitle("Choose Color")
+                                .navigationBarTitleDisplayMode(.inline)
+                                .toolbar {
+                                    ToolbarItem(placement: .navigationBarTrailing) {
+                                        Button("Done") {
+                                            onColorSelected(selectedColor)
+                                        }
+                                    }
+                                    
+                                    ToolbarItem(placement: .navigationBarLeading) {
+                                        Button("Cancel") {
+                                            onColorSelected(selectedColor)
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
