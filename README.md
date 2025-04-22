@@ -1,120 +1,91 @@
-# Modern Weather App
+# Weather App
 
-A beautiful, feature-rich weather application built with SwiftUI following modern architecture patterns.
+A modern iOS weather application built with SwiftUI that provides detailed weather information using the OpenWeather API.
 
-![Weather App Banner](https://via.placeholder.com/800x400.png?text=Weather+App)
+![Weather App Screenshot](app_screenshot.png)
 
 ## Features
 
-- 🌦 Real-time weather data from OpenWeather API
-- 📱 Clean, modern UI with beautiful animations
-- 🌓 Dark and light mode support
-- 📍 Location-based weather
-- 🔍 City search functionality
-- ⏱ Hourly forecast (24 hours)
-- 📆 7-day forecast with temperature ranges
-- 📊 Detailed weather metrics (UV index, pressure, visibility, humidity)
-- 🎭 Animated weather effects based on conditions
-- 🔄 Pull-to-refresh for updating data
+- **Current Weather**: View current weather conditions including temperature, feels-like temperature, humidity, wind speed, and more
+- **Hourly Forecast**: See weather predictions for the next 48 hours
+- **7-Day Forecast**: View extended forecasts for the week ahead
+- **Location-Based Weather**: Automatically fetch weather for your current location
+- **Search Locations**: Search for weather in any city worldwide
+- **Favorite Locations**: Save your frequently accessed locations for quick access
+- **Weather Maps**: View weather patterns on an interactive map
+- **Dark Mode Support**: Beautiful UI in both light and dark modes
+- **Custom Themes**: Personalize the app with custom accent colors
+- **Offline Support**: Access previously loaded weather data even without internet
+- **Weather Alerts**: Get notified about severe weather conditions
 
-## Screenshots
+## Technical Details
 
-<table>
-  <tr>
-    <td><img src="https://via.placeholder.com/250x500.png?text=Weather+Home" alt="Home Screen" /></td>
-    <td><img src="https://via.placeholder.com/250x500.png?text=Weather+Details" alt="Details Screen" /></td>
-    <td><img src="https://via.placeholder.com/250x500.png?text=Weather+Search" alt="Search Screen" /></td>
-  </tr>
-  <tr>
-    <td>Home Screen</td>
-    <td>Details View</td>
-    <td>Search View</td>
-  </tr>
-</table>
+The app is built using modern iOS development practices:
 
-## Architecture
-
-The app follows MVVM architecture with Clean Architecture principles:
-
-- **Models**: Data structures for API responses
-- **Views**: SwiftUI views for UI representation
-- **ViewModels**: Business logic and data transformation
-- **Use Cases**: Business rules and data flow coordination
-- **Repositories**: Abstract data source operations
-- **Network Services**: Handle API communication
+- **Architecture**: Clean Architecture with MVVM presentation layer
+- **UI Framework**: SwiftUI with programmatic UI components
+- **State Management**: Combine framework for reactive programming
+- **Dependency Injection**: Custom DI container for better testability
+- **Network Layer**: Robust API client with error handling and retries
+- **Caching**: Efficient caching mechanism for offline support
+- **Location Services**: CoreLocation integration with permission handling
+- **Persistence**: UserDefaults and file-based storage
 
 ## Requirements
 
-- iOS 16.0+
-- Xcode 14.0+
-- Swift 5.7+
+- iOS 14.0+
+- Xcode 13.0+
+- Swift 5.5+
 - OpenWeather API Key
 
 ## Installation
 
-1. Clone the repository
-   ```bash
-   git clone https://github.com/yourusername/WeatherApp.git
-   cd WeatherApp
+1. Clone the repository:
+   ```
+   git clone https://github.com/username/WeatherApp.git
    ```
 
-2. Open the project in Xcode
-   ```bash
-   open WeatherApp.xcodeproj
-   ```
+2. Open `WeatherApp.xcodeproj` in Xcode
 
-3. Set your OpenWeather API Key
-   - Open `Core/Data/Network/NetworkService.swift`
-   - Replace `YOUR_OPENWEATHER_API_KEY` with your actual API key
+3. Set your OpenWeather API key:
+   - Go to `WeatherApp/Config/Development.xcconfig`
+   - Replace `YOUR_DEVELOPMENT_API_KEY` with your actual API key
+   - For production builds, also update `WeatherApp/Config/Production.xcconfig`
 
-4. Build and run the application
+4. Build and run the application on your device or simulator
 
-## Setup from Script
+## Configuration
 
-If you want to start from scratch:
+The app supports various configuration options:
 
-1. Run the setup script
-   ```bash
-   ./setup-weather-app.sh
-   ```
+- **API Keys**: Manage API keys for different environments
+- **Temperature Units**: Choose between Celsius and Fahrenheit
+- **Refresh Frequency**: Control how often weather data updates
+- **Notifications**: Enable/disable different types of weather alerts
 
-2. Follow the instructions in the terminal
+## Architecture
 
-## Project Structure
+The app follows Clean Architecture principles with the following layers:
 
-```
-WeatherApp/
-├── App/                      # App entry point
-├── Core/                     # Core business logic
-│   ├── Domain/               # Business models and use cases
-│   ├── Data/                 # Data handling
-│   └── DI/                   # Dependency injection
-├── Features/                 # App features 
-│   ├── Common/               # Shared components
-│   ├── Welcome/              # Welcome screen
-│   ├── Weather/              # Main weather feature
-│   └── Search/               # Search functionality
-├── Services/                 # Helper services
-├── Resources/                # App resources
-└── Config/                   # Configuration files
-```
+- **Presentation Layer**: SwiftUI views and view models
+- **Domain Layer**: Use cases and domain models
+- **Data Layer**: Repositories and data sources
+- **Core**: Shared utilities and extensions
 
-## Weather Effects
+### Key Components
 
-The app includes dynamic weather effects based on current conditions:
-
-- **Clear**: Clean gradient background
-- **Cloudy**: Animated clouds
-- **Rainy**: Animated raindrops
-- **Stormy**: Heavy rain with lightning flashes
-- **Snowy**: Animated snowflakes
-- **Foggy**: Animated fog layers
+- **AppContainer**: Centralized dependency injection container
+- **WeatherViewModel**: Manages weather data and UI state
+- **WeatherRepository**: Handles data access with caching
+- **LocationManager**: Manages device location services
+- **NetworkMonitorService**: Tracks network connectivity
+- **ThemeManager**: Handles app appearance customization
 
 ## Contributing
 
 Contributions are welcome! Please feel free to submit a Pull Request.
 
-1. Fork the project
+1. Fork the repository
 2. Create your feature branch (`git checkout -b feature/amazing-feature`)
 3. Commit your changes (`git commit -m 'Add some amazing feature'`)
 4. Push to the branch (`git push origin feature/amazing-feature`)
@@ -124,9 +95,7 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 
 This project is licensed under the MIT License - see the LICENSE file for details.
 
-## Acknowledgements
+## Acknowledgments
 
 - [OpenWeather API](https://openweathermap.org/api) for weather data
-- [SwiftUI](https://developer.apple.com/xcode/swiftui/) for the UI framework
-- Icon designs inspired by Apple's SF Symbols
-
+- [SF Symbols](https://developer.apple.com/sf-symbols/) for weather icons
