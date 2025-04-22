@@ -20,7 +20,6 @@ class WeatherViewModel: ObservableObject {
     @Published var searchText = ""
     
     private var cancellables = Set<AnyCancellable>()
-    private var searchCancellable: AnyCancellable?
     
     init(fetchWeatherUseCase: FetchWeatherUseCaseProtocol, searchCityUseCase: SearchCityUseCaseProtocol) {
         self.fetchWeatherUseCase = fetchWeatherUseCase
@@ -42,6 +41,15 @@ class WeatherViewModel: ObservableObject {
     
     func fetchWeather(for city: City) {
         selectedCity = city
+        
+        // Save to UserDefaults for persistent storage
+        UserDefaults.standard.saveLastViewedCity(
+            cityName: city.name,
+            latitude: city.coordinates.latitude,
+            longitude: city.coordinates.longitude,
+            country: city.country
+        )
+        
         fetchWeather(latitude: city.coordinates.latitude, longitude: city.coordinates.longitude)
     }
     
@@ -49,24 +57,48 @@ class WeatherViewModel: ObservableObject {
         isLoading = true
         errorMessage = nil
         
+        print("Fetching weather for lat: \(latitude), lon: \(longitude)")
+        
         fetchWeatherUseCase.execute(latitude: latitude, longitude: longitude)
             .sink(receiveCompletion: { [weak self] completion in
-                self?.isLoading = false
-                if case .failure(let error) = completion {
-                    self?.errorMessage = error.localizedDescription
+                DispatchQueue.main.async {
+                    self?.isLoading = false
+                    if case .failure(let error) = completion {
+                        self?.errorMessage = "Could not load weather data: \(error.localizedDescription)"
+                        print("Weather fetch error: \(error)")
+                    }
                 }
             }, receiveValue: { [weak self] response in
-                self?.currentWeather = response.current
-                self?.hourlyForecast = Array(response.hourly.prefix(24))
-                self?.dailyForecast = response.daily
-                self?.timezone = response.timezone
+                DispatchQueue.main.async {
+                    self?.currentWeather = response.current
+                    self?.hourlyForecast = Array(response.hourly.prefix(24))
+                    self?.dailyForecast = response.daily
+                    self?.timezone = response.timezone
+                    
+                    // If we got weather data but don't have a selected city (came from location),
+                    // create a "Current Location" city
+                    if self?.selectedCity == nil {
+                        self?.selectedCity = City(
+                            name: "Current Location",
+                            country: "",
+                            coordinates: CLLocationCoordinate2D(latitude: latitude, longitude: longitude)
+                        )
+                    }
+                    
+                    print("Successfully loaded weather data")
+                }
             })
             .store(in: &cancellables)
     }
     
     func searchCity(query: String) {
+        print("Searching for city: \(query)")
+        
         searchCityUseCase.execute(query: query) { [weak self] cities in
-            self?.searchResults = cities
+            DispatchQueue.main.async {
+                self?.searchResults = cities
+                print("Found \(cities.count) cities for query: \(query)")
+            }
         }
     }
     
