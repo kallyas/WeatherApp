@@ -8,13 +8,9 @@ struct ContentView: View {
     // Track if we've already loaded initial data
     @State private var initialDataLoaded = false
     
-    init() {
-        // Use the proper configuration for API keys
-        let container = AppContainer()
-        _weatherViewModel = StateObject(wrappedValue: WeatherViewModel(
-            fetchWeatherUseCase: container.fetchWeatherUseCase,
-            searchCityUseCase: container.searchCityUseCase
-        ))
+    init(weatherViewModel: WeatherViewModel) {
+        // Initialize with the provided weatherViewModel
+        _weatherViewModel = StateObject(wrappedValue: weatherViewModel)
     }
     
     var body: some View {
@@ -50,7 +46,6 @@ struct ContentView: View {
                     } else if weatherViewModel.currentWeather != nil {
                         WeatherDashboardView(
                             viewModel: weatherViewModel,
-                            isDarkMode: $isDarkMode
                         )
                     } else {
                         // This is the initial state - show welcome view
