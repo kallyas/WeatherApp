@@ -1,18 +1,13 @@
-//
-//  WeatherMapView.swift
-//  WeatherApp
-//
-//  Created by Tumuhirwe Iden on 22/04/2025.
-//
-
-
 import SwiftUI
 import MapKit
 
+
+
+// Main WeatherMapView
 struct WeatherMapView: View {
     @EnvironmentObject private var themeManager: ThemeManager
     @State private var selectedMapType: MapDisplayType = .temperature
-    @State private var region = MKCoordinateRegion(
+    @State private var mapRegion = MKCoordinateRegion(
         center: CLLocationCoordinate2D(latitude: 37.7749, longitude: -122.4194),
         span: MKCoordinateSpan(latitudeDelta: 10, longitudeDelta: 10)
     )
@@ -52,19 +47,12 @@ struct WeatherMapView: View {
     var body: some View {
         NavigationView {
             ZStack {
-                // Map view
-                Map(coordinateRegion: $region)
-                    .edgesIgnoringSafeArea(.bottom)
-                    .overlay(
-                        // Weather overlay image (would be from API in real app)
-                        Image("weather_map_placeholder")
-                            .resizable()
-                            .opacity(0.7)
-                            .overlay(
-                                // This is a placeholder overlay based on selected type
-                                weatherOverlay
-                            )
-                    )
+                // Map view with conditional behavior for iOS version
+                if #available(iOS 17.0, *) {
+                    ios17MapView
+                } else {
+                    ios16MapView
+                }
                 
                 // Map Options Panel
                 mapOptionsPanel
@@ -79,112 +67,135 @@ struct WeatherMapView: View {
                 }
                 
                 // Map controls
-                VStack {
-                    Spacer()
-                    
-                    HStack {
-                        Spacer()
-                        
-                        VStack(spacing: 15) {
-                            Button(action: {
-                                withAnimation {
-                                    isMapOptionsVisible.toggle()
-                                }
-                            }) {
-                                Image(systemName: isMapOptionsVisible ? "xmark" : "slider.horizontal.3")
-                                    .font(.system(size: 20, weight: .bold))
-                                    .foregroundColor(.white)
-                                    .padding()
-                                    .background(Circle().fill(themeManager.accentColor))
-                                    .shadow(radius: 5)
-                            }
-                            
-                            Button(action: {
-                                withAnimation {
-                                    // Find user location
-                                    isLoading = true
-                                    DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
-                                        // In a real app, this would use LocationManager
-                                        region.center = CLLocationCoordinate2D(latitude: 37.7749, longitude: -122.4194)
-                                        isLoading = false
-                                    }
-                                }
-                            }) {
-                                Image(systemName: "location.fill")
-                                    .font(.system(size: 20, weight: .bold))
-                                    .foregroundColor(.white)
-                                    .padding()
-                                    .background(Circle().fill(themeManager.accentColor))
-                                    .shadow(radius: 5)
-                            }
-                            
-                            Button(action: {
-                                withAnimation {
-                                    // Zoom in
-                                    region.span.latitudeDelta = max(region.span.latitudeDelta * 0.5, 0.01)
-                                    region.span.longitudeDelta = max(region.span.longitudeDelta * 0.5, 0.01)
-                                }
-                            }) {
-                                Image(systemName: "plus")
-                                    .font(.system(size: 20, weight: .bold))
-                                    .foregroundColor(.white)
-                                    .padding()
-                                    .background(Circle().fill(themeManager.accentColor))
-                                    .shadow(radius: 5)
-                            }
-                            
-                            Button(action: {
-                                withAnimation {
-                                    // Zoom out
-                                    region.span.latitudeDelta = min(region.span.latitudeDelta * 2, 180)
-                                    region.span.longitudeDelta = min(region.span.longitudeDelta * 2, 180)
-                                }
-                            }) {
-                                Image(systemName: "minus")
-                                    .font(.system(size: 20, weight: .bold))
-                                    .foregroundColor(.white)
-                                    .padding()
-                                    .background(Circle().fill(themeManager.accentColor))
-                                    .shadow(radius: 5)
-                            }
-                        }
-                        .padding()
-                    }
-                }
+                mapControlsView
             }
             .navigationTitle("Weather Map")
             .onAppear {
-                // In a real app, load the user's last position or current location
                 checkLocationAndLoadMap()
             }
         }
     }
     
-    // Weather overlay based on selected map type
-    private var weatherOverlay: some View {
+    // MARK: - Map Views
+    
+    // iOS 16 Map View implementation
+    private var ios16MapView: some View {
+        Map(coordinateRegion: $mapRegion)
+            .ignoresSafeArea(edges: .bottom)
+            .overlay(weatherOverlayView)
+    }
+    
+    // iOS 17+ Map View implementation
+    @available(iOS 17.0, *)
+    private var ios17MapView: some View {
+        Map(position: mapPositionBinding)
+            .ignoresSafeArea(edges: .bottom)
+            .mapStyle(.standard)
+            .overlay(weatherOverlayView)
+    }
+    
+    // Weather overlay view
+    private var weatherOverlayView: some View {
         ZStack {
-            // In a real app, this would display actual weather data as an overlay
-            // Here we just show different colored overlays for different map types
-            switch selectedMapType {
-            case .temperature:
-                temperatureGradient.opacity(0.4)
-            case .precipitation:
-                precipitationGradient.opacity(0.5)
-            case .clouds:
-                cloudGradient.opacity(0.3)
-            case .wind:
-                windGradient.opacity(0.4)
-            case .pressure:
-                pressureGradient.opacity(0.4)
+            weatherTypeOverlay
+                .opacity(0.7)
+        }
+    }
+    
+    // Weather type specific overlay
+    @ViewBuilder
+    private var weatherTypeOverlay: some View {
+        switch selectedMapType {
+        case .temperature:
+            Rectangle().fill(temperatureGradient).blendMode(.normal)
+        case .precipitation:
+            Rectangle().fill(precipitationGradient).blendMode(.normal)
+        case .clouds:
+            Rectangle().fill(cloudGradient).blendMode(.normal)
+        case .wind:
+            Rectangle().fill(windGradient).blendMode(.normal)
+        case .pressure:
+            Rectangle().fill(pressureGradient).blendMode(.normal)
+        }
+    }
+    
+    // Map controls
+    private var mapControlsView: some View {
+        VStack {
+            Spacer()
+            
+            HStack {
+                Spacer()
+                
+                VStack(spacing: 15) {
+                    // Toggle map options panel
+                    Button(action: {
+                        withAnimation {
+                            isMapOptionsVisible.toggle()
+                        }
+                    }) {
+                        Image(systemName: isMapOptionsVisible ? "xmark" : "slider.horizontal.3")
+                            .font(.system(size: 20, weight: .bold))
+                            .foregroundColor(.white)
+                            .padding()
+                            .background(Circle().fill(themeManager.accentColor))
+                            .shadow(radius: 5)
+                    }
+                    
+                    // Find user location
+                    Button(action: {
+                        withAnimation {
+                            centerOnUserLocation()
+                        }
+                    }) {
+                        Image(systemName: "location.fill")
+                            .font(.system(size: 20, weight: .bold))
+                            .foregroundColor(.white)
+                            .padding()
+                            .background(Circle().fill(themeManager.accentColor))
+                            .shadow(radius: 5)
+                    }
+                    
+                    // Zoom in
+                    Button(action: {
+                        withAnimation {
+                            zoomIn()
+                        }
+                    }) {
+                        Image(systemName: "plus")
+                            .font(.system(size: 20, weight: .bold))
+                            .foregroundColor(.white)
+                            .padding()
+                            .background(Circle().fill(themeManager.accentColor))
+                            .shadow(radius: 5)
+                    }
+                    
+                    // Zoom out
+                    Button(action: {
+                        withAnimation {
+                            zoomOut()
+                        }
+                    }) {
+                        Image(systemName: "minus")
+                            .font(.system(size: 20, weight: .bold))
+                            .foregroundColor(.white)
+                            .padding()
+                            .background(Circle().fill(themeManager.accentColor))
+                            .shadow(radius: 5)
+                    }
+                }
+                .padding()
             }
         }
     }
     
-    // Map options panel that slides in/out
+    // MARK: - Map Options Panel
+    
     private var mapOptionsPanel: some View {
         VStack {
             if isMapOptionsVisible {
                 VStack(spacing: 0) {
+                    // Panel header
                     Text("Map Layers")
                         .font(.headline)
                         .padding()
@@ -193,36 +204,15 @@ struct WeatherMapView: View {
                     
                     Divider()
                     
+                    // Map type selector list
                     ScrollView {
                         VStack(spacing: 0) {
                             ForEach(MapDisplayType.allCases) { mapType in
                                 Button(action: {
                                     selectedMapType = mapType
-                                    // In a real app, refresh the weather overlay
-                                    withAnimation {
-                                        isLoading = true
-                                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) {
-                                            isLoading = false
-                                        }
-                                    }
+                                    simulateMapLayerLoading()
                                 }) {
-                                    HStack {
-                                        Image(systemName: mapType.icon)
-                                            .foregroundColor(themeManager.accentColor)
-                                            .frame(width: 30)
-                                        
-                                        Text(mapType.rawValue)
-                                            .foregroundColor(.primary)
-                                        
-                                        Spacer()
-                                        
-                                        if selectedMapType == mapType {
-                                            Image(systemName: "checkmark")
-                                                .foregroundColor(themeManager.accentColor)
-                                        }
-                                    }
-                                    .padding()
-                                    .contentShape(Rectangle())
+                                    mapTypeRow(mapType)
                                 }
                                 
                                 if mapType != MapDisplayType.allCases.last {
@@ -250,6 +240,29 @@ struct WeatherMapView: View {
         }
     }
     
+    // Map type row for the selector list
+    private func mapTypeRow(_ mapType: MapDisplayType) -> some View {
+        HStack {
+            Image(systemName: mapType.icon)
+                .foregroundColor(themeManager.accentColor)
+                .frame(width: 30)
+            
+            Text(mapType.rawValue)
+                .foregroundColor(.primary)
+            
+            Spacer()
+            
+            if selectedMapType == mapType {
+                Image(systemName: "checkmark")
+                    .foregroundColor(themeManager.accentColor)
+            }
+        }
+        .padding()
+        .contentShape(Rectangle())
+    }
+    
+    // MARK: - Map Legends
+    
     // Legend for the selected map type
     private var mapLegend: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -258,27 +271,30 @@ struct WeatherMapView: View {
                 .padding(.horizontal)
                 .padding(.top, 8)
             
-            switch selectedMapType {
-            case .temperature:
-                temperatureLegend
-            case .precipitation:
-                precipitationLegend
-            case .clouds:
-                cloudLegend
-            case .wind:
-                windLegend
-            case .pressure:
-                pressureLegend
+            Group {
+                switch selectedMapType {
+                case .temperature:
+                    temperatureLegend
+                case .precipitation:
+                    precipitationLegend
+                case .clouds:
+                    cloudLegend
+                case .wind:
+                    windLegend
+                case .pressure:
+                    pressureLegend
+                }
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.bottom, 8)
     }
     
-    // Each map type has its own legend
+    // Temperature legend
     private var temperatureLegend: some View {
         HStack {
-            temperatureGradient
+            Rectangle()
+                .fill(temperatureGradient)
                 .frame(height: 20)
                 .cornerRadius(5)
             
@@ -309,9 +325,11 @@ struct WeatherMapView: View {
         .padding(.horizontal)
     }
     
+    // Precipitation legend
     private var precipitationLegend: some View {
         HStack {
-            precipitationGradient
+            Rectangle()
+                .fill(precipitationGradient)
                 .frame(height: 20)
                 .cornerRadius(5)
             
@@ -342,9 +360,11 @@ struct WeatherMapView: View {
         .padding(.horizontal)
     }
     
+    // Cloud coverage legend
     private var cloudLegend: some View {
         HStack {
-            cloudGradient
+            Rectangle()
+                .fill(cloudGradient)
                 .frame(height: 20)
                 .cornerRadius(5)
             
@@ -375,9 +395,11 @@ struct WeatherMapView: View {
         .padding(.horizontal)
     }
     
+    // Wind speed legend
     private var windLegend: some View {
         HStack {
-            windGradient
+            Rectangle()
+                .fill(windGradient)
                 .frame(height: 20)
                 .cornerRadius(5)
             
@@ -408,9 +430,11 @@ struct WeatherMapView: View {
         .padding(.horizontal)
     }
     
+    // Pressure legend
     private var pressureLegend: some View {
         HStack {
-            pressureGradient
+            Rectangle()
+                .fill(pressureGradient)
                 .frame(height: 20)
                 .cornerRadius(5)
             
@@ -435,7 +459,9 @@ struct WeatherMapView: View {
         .padding(.horizontal)
     }
     
-    // Gradients for each map type
+    // MARK: - Gradients
+    
+    // Temperature gradient (blue-green-yellow-orange-red)
     private var temperatureGradient: LinearGradient {
         LinearGradient(
             gradient: Gradient(colors: [.blue, .green, .yellow, .orange, .red]),
@@ -444,6 +470,7 @@ struct WeatherMapView: View {
         )
     }
     
+    // Precipitation gradient (clear-blue-purple)
     private var precipitationGradient: LinearGradient {
         LinearGradient(
             gradient: Gradient(colors: [.clear, .blue.opacity(0.3), .blue, .purple]),
@@ -452,6 +479,7 @@ struct WeatherMapView: View {
         )
     }
     
+    // Cloud coverage gradient (clear-gray-darkGray)
     private var cloudGradient: LinearGradient {
         LinearGradient(
             gradient: Gradient(colors: [.clear, .gray.opacity(0.3), .gray, .gray.opacity(0.8)]),
@@ -460,6 +488,7 @@ struct WeatherMapView: View {
         )
     }
     
+    // Wind speed gradient (green-yellow-orange-red)
     private var windGradient: LinearGradient {
         LinearGradient(
             gradient: Gradient(colors: [.green, .yellow, .orange, .red]),
@@ -468,6 +497,7 @@ struct WeatherMapView: View {
         )
     }
     
+    // Pressure gradient (purple-blue-cyan-green-yellow)
     private var pressureGradient: LinearGradient {
         LinearGradient(
             gradient: Gradient(colors: [.purple, .blue, .cyan, .green, .yellow]),
@@ -478,24 +508,103 @@ struct WeatherMapView: View {
     
     // MARK: - Helper Methods
     
+    // Initialize the map with user location
     private func checkLocationAndLoadMap() {
-        // In a real app, this would use LocationManager to get user's location
         isLoading = true
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
-            // Simulating location loading
-            // In a real app, this would set region to the user's actual location
-            region = MKCoordinateRegion(
+            // TODO: Replace with CLLocationManager for real location
+            mapRegion = MKCoordinateRegion(
                 center: CLLocationCoordinate2D(latitude: 37.7749, longitude: -122.4194),
                 span: MKCoordinateSpan(latitudeDelta: 10, longitudeDelta: 10)
             )
             isLoading = false
         }
     }
-}
-
-// Preview
-struct WeatherMapView_Previews: PreviewProvider {
-    static var previews: some View {
-        WeatherMapView()
+    
+    // Center map on user location
+    private func centerOnUserLocation() {
+        isLoading = true
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+            // TODO: Replace with CLLocationManager for real location
+            mapRegion = MKCoordinateRegion(
+                center: CLLocationCoordinate2D(latitude: 37.7749, longitude: -122.4194),
+                span: MKCoordinateSpan(latitudeDelta: 10, longitudeDelta: 10)
+            )
+            isLoading = false
+        }
+    }
+    
+    // Simulate loading when changing map layers
+    private func simulateMapLayerLoading() {
+        isLoading = true
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) {
+            isLoading = false
+        }
+    }
+    
+    // Zoom in function - halves the span
+    private func zoomIn() {
+        mapRegion = MKCoordinateRegion(
+            center: mapRegion.center,
+            span: MKCoordinateSpan(
+                latitudeDelta: max(mapRegion.span.latitudeDelta * 0.5, 0.01),
+                longitudeDelta: max(mapRegion.span.longitudeDelta * 0.5, 0.01)
+            )
+        )
+    }
+    
+    // Zoom out function - doubles the span
+    private func zoomOut() {
+        mapRegion = MKCoordinateRegion(
+            center: mapRegion.center,
+            span: MKCoordinateSpan(
+                latitudeDelta: min(mapRegion.span.latitudeDelta * 2, 180),
+                longitudeDelta: min(mapRegion.span.longitudeDelta * 2, 180)
+            )
+        )
     }
 }
+
+// MARK: - iOS 17 Map Extensions
+
+@available(iOS 17.0, *)
+extension WeatherMapView {
+    // Binding to convert between MKCoordinateRegion and MapCameraPosition
+    var mapPositionBinding: Binding<MapCameraPosition> {
+        return Binding(
+            get: {
+                MapCameraPosition.region(self.mapRegion)
+            },
+            set: { newValue in
+                DispatchQueue.main.async {
+                               print("Not Implemented")
+                            }
+            }
+        )
+    }
+    
+//    // Process new map position safely
+//    private func processNewMapPosition(_ position: MapCameraPosition) {
+//        // Case 1: If it's a region, extract and assign
+//        if case let .region(newRegion) = position {
+//            self.mapRegion = newRegion
+//            return
+//        }
+//
+//        // Case 2: If it's a camera, extract and convert
+//        if case let .camera(camera) = position {
+//            let distance = camera.distance
+//            let spanDelta = distance / 111_000.0 // Approx. meters to degrees
+//            self.mapRegion = MKCoordinateRegion(
+//                center: camera.centerCoordinate,
+//                span: MKCoordinateSpan(latitudeDelta: spanDelta, longitudeDelta: spanDelta)
+//            )
+//            return
+//        }
+//
+//        // Fallback: Unhandled position type
+//        print("Unhandled MapCameraPosition case: \(position)")
+//    }
+
+}
+
