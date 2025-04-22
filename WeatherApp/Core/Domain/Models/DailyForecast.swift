@@ -6,6 +6,7 @@ struct DailyForecast: Codable, Identifiable {
     let weather: [WeatherCondition]
     let pop: Double
     let sunrise: Int
+    let sunset: Int
     
     var id: Int { dt }
     
