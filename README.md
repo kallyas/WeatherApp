@@ -2,7 +2,7 @@
 
 A modern iOS weather application built with SwiftUI that provides detailed weather information using the OpenWeather API.
 
-![Weather App Screenshot](app_screenshot.png)
+![Weather App Screenshot](app_screen.png)
 
 ## Features
 
